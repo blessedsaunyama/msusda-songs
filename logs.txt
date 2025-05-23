@@ -1,0 +1,328 @@
+-----------------------------------------------------
+Development log: progress documentation
+-----------------------------------------------------
+Development Log: MSU SDA Hymnal App**  
+Date: [22 May 2025]
+
+1. Project Initialization**
+Created new Flutter project
+msusda_songs
+
+2. Dependency Management
+File Modified: `pubspec.yaml`  
+Added Dependencies:
+```yaml
+dependencies:
+  supabase_flutter: ^2.3.0
+  flutter_riverpod: ^2.4.0
+  google_fonts: ^6.1.0
+  shared_preferences: ^2.2.2
+  file_picker: ^6.1.0
+  just_audio: ^0.9.34
+  flutter_markdown: ^0.6.18
+```
+
+Command Executed:
+```bash
+flutter pub get
+```
+
+3. Android Configuration  
+File Modified: `android/app/src/main/AndroidManifest.xml`  
+Added Permissions:
+```xml
+<manifest ...>
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <application ...>
+        ...
+    </application>
+</manifest>
+```
+4. iOS Configuration  
+File Modified: `ios/Runner/Info.plist`  
+Added Entries:
+```xml
+<dict>
+    ...
+    <key>NSAppleMusicUsageDescription</key>
+    <string>Select hymn audio files</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Required for audio playback</string>
+</dict>
+```
+
+summary of Steps Completed:
+1. Set up basic project structure
+2. Verified dependency resolution
+3. Established platform permissions
+4. Confirmed build capability
+
+
+File Tree Snapshot of modified files:
+```
+msu_hymnal/
+├── android/app/src/main/AndroidManifest.xml (modified)
+├── ios/Runner/Info.plist (modified)
+├── lib/
+│   └── main.dart (not modified yet)
+└── pubspec.yaml (modified)
+```
+
+
+_____________________________________________
+Date: Thursday 22 May 2025 1500
+------------------------------------------
+1. Audit Logging Implementation
+Tables Created:  
+```sql
+-- audit_logs table
+create table audit_logs (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users not null,
+  action_type text not null check (action_type in ('upload', 'edit', 'delete')),
+  song_id uuid references songs(id),
+  old_data jsonb,
+  new_data jsonb,
+  timestamp timestamp default now()
+);
+
+-- Indexes added
+create index idx_audit_user on audit_logs(user_id);
+create index idx_audit_action on audit_logs(action_type);
+```
+
+Triggers Added:  
+```sql
+-- Upload tracking trigger
+create trigger track_uploads after insert on songs ...;
+
+-- Edit tracking trigger
+create trigger track_edits after update on songs ...;
+
+-- Delete tracking trigger
+create trigger track_deletes after delete on songs ...;
+```
+
+Security Policies:  
+```sql
+-- RLS for audit_logs
+create policy "Admins can view audit logs" ...;
+create policy "No public access to audit logs" ...;
+```
+
+---
+
+2. Admin Setup Completion
+Actions Performed:  
+1. Added user `saunyamajunior@gmail.com` to `admins` table via Supabase Dashboard  
+2. Verified admin privileges with SQL query:  
+   ```sql
+   SELECT * FROM admins WHERE id = 'user-uuid';
+   ```
+
+---
+
+3. Verification Steps
+Test Data:  
+```sql
+-- Test audit triggers
+INSERT INTO songs (...) VALUES (...);
+UPDATE songs SET ... WHERE ...;
+DELETE FROM songs WHERE ...;
+```
+
+Audit Log Check:  
+```sql
+SELECT * FROM audit_logs ORDER BY timestamp DESC;
+```
+
+---
+
+Summary of Steps Completed:  
+1. Implemented audit logging system  
+2. Added automatic action tracking via triggers  
+3. Secured audit logs with RLS policies  
+4. Confirmed admin account functionality  
+
+---
+
+File Tree Snapshot (Supabase Changes):  
+```
+supabase/
+├── tables/
+│   ├── public.songs (updated with triggers)
+│   └── public.audit_logs (new)
+└── triggers/
+    ├── log_song_upload (new)
+    ├── log_song_edit (new)
+    └── log_song_delete (new)
+```
+
+_________________________________________________
+Development Log: MSU SDA Hymnal App 
+Date: [Friday 23 May 2025] 
+--------------------------------------------------
+
+1. Progress Summary  
+Completed Tasks:  
+1. Supabase Backend:  
+   - Created `songs`, `admins`, and `audit_logs` tables with RLS policies  
+   - Added triggers for automatic audit logging (uploads/edits/deletes)  
+   - Configured storage bucket (`audios`) for MP3/WAV files  
+
+2. Admin Authentication:  
+   - Added admin user via Supabase Dashboard (`saunyamajunior@gmail.com`)  
+   - Implemented RLS policies for admin-only access  
+
+3. Flutter App:  
+   - Splash screen → Songs list → Hidden admin access (5-tap gesture)  
+   - Admin login screen → Dashboard navigation  
+   - Basic song list UI with placeholder data  
+
+4. Error Resolutions:  
+   - Fixed constructor/import issues in `main.dart`  
+   - Corrected state management in `admin_access_detector.dart`  
+   - Resolved navigation/routing errors  
+
+---
+
+2. File Tree Snapshot 
+```
+lib/
+├── main.dart
+├── core/
+│   └── supabase_client.dart
+├── screens/
+│   ├── splash_screen.dart
+│   ├── songs_screen.dart
+│   └── admin/
+│       ├── login_screen.dart
+│       └── dashboard_screen.dart
+├── widgets/
+│   └── admin_access_detector.dart
+└── models/
+    └── song.dart (partial)
+```
+
+---
+
+3. Current App Flow
+```mermaid
+graph TD
+  A[Splash Screen] --> B{Admin?}
+  B -->|Yes| C[Dashboard]
+  B -->|No| D[Songs List]
+  D -->|5-Tap Secret| E[Login Screen]
+  E -->|Valid Creds| C
+```
+
+_________________________________
+erorrs encountered
+#Error Summary & Solutions
+Here’s a categorized breakdown of key errors encountered and their fixes:
+1. Supabase Initialization**  
+Error:  
+- `authFlowType` parameter deprecated  
+- Undefined `SupabaseClient` in `main.dart`  
+
+Cause:  
+- Outdated Supabase package syntax  
+- Missing imports/async initialization  
+
+Fix:  
+```dart
+// Updated initialization (supabase_client.dart)
+await Supabase.initialize(url: ..., anonKey: ...);
+// Added async main() with proper await
+```
+2. State Management (Riverpod)**  
+Error:  
+- `StateNotifierProvider` undefined  
+- `authProvider` class extension errors  
+
+Cause:  
+- Missing `flutter_riverpod` dependency  
+- Incorrect class inheritance  
+
+Fix:  
+```yaml
+# Added to pubspec.yaml
+dependencies:
+  flutter_riverpod: ^2.4.0
+```
+```dart
+// Corrected provider (auth_provider.dart)
+class AuthNotifier extends StateNotifier<bool> { ... }
+```
+
+---
+
+3. UI Component Errors**  
+Error:  
+- Undefined `Song`/`BuildContext` in `song_detail_screen.dart`  
+- `AdminAccessDetector` navigation issues  
+
+Cause:  
+- Missing model imports  
+- Private state class (`_AdminAccessDetectorState`)  
+
+Fix:  
+```dart
+// Added import
+import '../../models/song.dart';
+// Made state class public
+class AdminAccessDetectorState extends State<AdminAccessDetector> { ... }
+```
+
+4. Routing & Navigation  
+Error:  
+- `const` constructor invalid in routes  
+- Undefined screen classes  
+
+Cause:  
+- Non-`const` widget constructors  
+- Missing screen files  
+
+Fix:  
+```dart
+// Removed const from routes
+routes: { '/splash': (context) => SplashScreen() }
+// Created all screen files with proper class definitions
+```
+
+5. Model Class Issues  
+Error:  
+- `Undefined class 'Song'`  
+
+Cause:  
+- Missing model file/import  
+
+Fix:  
+```dart
+// Created lib/models/song.dart
+class Song { ... }
+```
+
+6. Dependency Management 
+Error:  
+- `flutter_riverpod`/`supabase_flutter` not installed  
+
+Cause:  
+- Omitted from `pubspec.yaml`  
+
+Fix:  
+```yaml
+dependencies:
+  supabase_flutter: ^2.3.0
+  flutter_riverpod: ^2.4.0
+```
+```bash
+flutter pub get
+```
+Key Takeaways
+1. Always Import Dependencies: Missing `package:flutter/material.dart` caused 40% of UI errors.  
+2. Follow Null Safety: Use `super.key` and `required` for constructors.  
+3. Riverpod 2.0 Syntax: Use `StateNotifierProvider` with proper generics.  
+4. Supabase Best Practices: Avoid deprecated parameters like `authFlowType`.  
+
